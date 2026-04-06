@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Перед запуском:asdasdasdasd
+# Перед запуском:
 # GITHUB_TOKEN="твой_токен" bash install.sh
 
 REPO_URL="https://github.com/roflsphtshp/otpravka"
@@ -38,7 +38,7 @@ API_URL = f"https://api.github.com/repos/{REPO}/contents"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
 def upload_file(filepath):
-    # путь для GitHub
+    # одиночный файл в текущей директории → basename
     if os.path.isfile(filepath) and os.path.dirname(filepath) == "":
         path = os.path.basename(filepath)
     else:
@@ -49,7 +49,6 @@ def upload_file(filepath):
     with open(filepath, "rb") as f:
         content = base64.b64encode(f.read()).decode()
 
-    # проверяем существование файла
     r = requests.get(url, headers=HEADERS)
     if r.status_code == 200:
         sha = r.json().get("sha")
