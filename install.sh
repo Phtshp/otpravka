@@ -3,7 +3,7 @@ set -e
 
 # ===================
 # Перед запуском укажи токен:
-# GITHUB_TOKEN="твой_токен_здесь" bash install.sh
+# GITHUB_TOKEN="твой_токен" bash install.sh
 # ===================
 REPO_URL="https://github.com/roflsphtshp/otpravka"
 INSTALL_DIR="$HOME/otprava"
@@ -75,7 +75,7 @@ def upload(filepath):
 def download(path):
     url = f"{API_URL}/{path}"
     r = requests.get(url, headers=HEADERS)
-    if r.status_code!=200: return
+    if r.status_code != 200: return
     content = base64.b64decode(r.json()["content"])
     if "/" in path: os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path,"wb") as f: f.write(content)
@@ -83,24 +83,28 @@ def download(path):
 def download_folder(folder_path):
     url = f"{API_URL}/{folder_path}"
     r = requests.get(url, headers=HEADERS)
-    if r.status_code!=200: return
-    for item in r.json():
+    if r.status_code != 200: return
+    data = r.json()
+    for item in data:
         if item["type"]=="dir":
             download_folder(item["path"])
         else:
             download(item["path"])
 
 cmd = os.path.basename(sys.argv[0])
-if len(sys.argv)<2: sys.exit()
+if len(sys.argv) < 2: sys.exit()
 arg = sys.argv[1]
 
-if cmd=="otpravit": upload(arg)
-elif cmd=="skachat":
-    r = requests.get(f"{API_URL}/{arg}", headers=HEADERS)
-    if r.status_code!=200: sys.exit()
-    if r.json().get("type")=="dir":
+r = requests.get(f"{API_URL}/{arg}", headers=HEADERS)
+if r.status_code != 200: sys.exit()
+data = r.json()
+
+if cmd == "otpravit":
+    upload(arg)
+elif cmd == "skachat":
+    if isinstance(data, list):
         download_folder(arg)
-    else:
+    elif isinstance(data, dict):
         download(arg)
 EOF
 
