@@ -57,15 +57,20 @@ def upload(filepath):
         return
     if not os.path.exists(filepath): return
 
-    with open(filepath,"rb") as file:
-        content = base64.b64encode(file.read()).decode()
-
     path = os.path.relpath(filepath, start=os.getcwd()).replace("\\","/")
     url = f"{API_URL}/{path}"
 
-    payload = {"message": f"upload {path}", "content": content, "branch": BRANCH}
+    with open(filepath, "rb") as f:
+        content = base64.b64encode(f.read()).decode()
 
-    # Выполняем PUT без GET
+    # Проверяем существует ли файл
+    r = requests.get(url, headers=HEADERS)
+    if r.status_code == 200:
+        sha = r.json()["sha"]
+        payload = {"message": f"update {path}", "content": content, "branch": BRANCH, "sha": sha}
+    else:
+        payload = {"message": f"create {path}", "content": content, "branch": BRANCH}
+
     r2 = requests.put(url, json=payload, headers=HEADERS)
     if r2.status_code not in [200,201]:
         print("Ошибка при загрузке:", r2.text)
