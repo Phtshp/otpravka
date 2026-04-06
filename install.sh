@@ -63,12 +63,9 @@ def upload(filepath):
     path = os.path.relpath(filepath, start=os.getcwd()).replace("\\","/")
     url = f"{API_URL}/{path}"
 
-    r = requests.get(url, headers=HEADERS)
-    data = r.json()
-    sha = data.get("sha") if isinstance(data, dict) else None
-
     payload = {"message": f"upload {path}", "content": content, "branch": BRANCH}
-    if sha: payload["sha"] = sha
+
+    # Выполняем PUT без GET
     r2 = requests.put(url, json=payload, headers=HEADERS)
     if r2.status_code not in [200,201]:
         print("Ошибка при загрузке:", r2.text)
