@@ -2,7 +2,7 @@
 set -e
 
 # Перед запуском:
-# GITHUB_TOKEN="твой_токен" bash install.sh
+# GITHUB_TOKEN="твой_токен" bash install.sh надеюсь конец
 
 REPO_URL="https://github.com/roflsphtshp/otpravka"
 INSTALL_DIR="$HOME/otprava"
