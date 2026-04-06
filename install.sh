@@ -11,14 +11,21 @@ fi
 
 sudo dnf install -y python3 python3-requests >/dev/null 2>&1
 
-sudo tee /usr/bin/otpravit >/dev/null <<'EOF'
+# Сохраняем токен в конфиг
+mkdir -p ~/.config/otpravit
+echo "$GITHUB_TOKEN" > ~/.config/otpravit/token
+chmod 600 ~/.config/otpravit/token
+
+# Создаём скрипт
+sudo tee /usr/local/bin/otpravit >/dev/null <<'EOF'
 #!/usr/bin/env python3
 import os, sys, base64, requests
 
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-if not GITHUB_TOKEN:
-    print("GITHUB_TOKEN не задан")
+TOKEN_FILE = os.path.expanduser("~/.config/otpravit/token")
+if not os.path.exists(TOKEN_FILE):
+    print("Токен не найден в ~/.config/otpravit/token")
     sys.exit(1)
+GITHUB_TOKEN = open(TOKEN_FILE).read().strip()
 
 REPO = "roflsphtshp/otpravka"
 BRANCH = "main"
@@ -30,14 +37,14 @@ def upload_file(filepath):
     url = f"{API_URL}/{path}"
     with open(filepath,"rb") as f:
         content = base64.b64encode(f.read()).decode()
-    # получаем sha если файл существует
     try:
         r = requests.get(url, headers=HEADERS)
         sha = r.json().get("sha") if r.status_code == 200 else None
     except:
         sha = None
     payload = {"message": f"update {path}" if sha else f"create {path}",
-               "content": content, "branch": BRANCH}
+               "content": content,
+               "branch": BRANCH}
     if sha:
         payload["sha"] = sha
     r2 = requests.put(url, json=payload, headers=HEADERS)
@@ -81,7 +88,7 @@ def list_folder(path=""):
         print(f"[ERROR] {path} не найден на GitHub")
         return
     data = r.json()
-    if isinstance(data, dict):  # файл
+    if isinstance(data, dict):
         print(data['name'])
     else:
         for item in data:
@@ -109,6 +116,6 @@ elif cmd == "prosmotret":
     list_folder(arg)
 EOF
 
-sudo chmod +x /usr/bin/otpravit
-sudo ln -sf /usr/bin/otpravit /usr/bin/skachat
-sudo ln -sf /usr/bin/otpravit /usr/bin/prosmotret
+sudo chmod +x /usr/local/bin/otpravit
+sudo ln -sf /usr/local/bin/otpravit /usr/local/bin/skachat
+sudo ln -sf /usr/local/bin/otpravit /usr/local/bin/prosmotret
