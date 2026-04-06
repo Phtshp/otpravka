@@ -2,7 +2,7 @@
 set -e
 
 # ===================
-# Перед запуском укажи токен:
+# Перед запуском укажи токен:фффффффффф
 # GITHUB_TOKEN="твой_токен" bash install.sh
 # ===================
 REPO_URL="https://github.com/roflsphtshp/otpravka"
