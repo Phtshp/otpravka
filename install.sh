@@ -1,96 +1,45 @@
 #!/bin/bash
 set -e
 
-# Установить Python и requests, если не установлены
+# Установка python и requests
 sudo dnf install -y python3 python3-requests >/dev/null 2>&1
 
-# Сохраняем токен в конфиг
+# Проверка токена
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "GITHUB_TOKEN не задан!"
     exit 1
 fi
 
+# Сохраняем токен
 mkdir -p ~/.config/otpravit
 echo "$GITHUB_TOKEN" > ~/.config/otpravit/token
 chmod 600 ~/.config/otpravit/token
 
-# Создаём скрипт otpravit в /usr/bin
+# Клонируем репозиторий локально
+git clone https://github.com/roflsphtshp/otpravka.git ~/.otprava || (cd ~/.otprava && git pull)
+
+# Создаём скрипт otpravit
 sudo tee /usr/bin/otpravit >/dev/null <<'EOF'
 #!/usr/bin/env python3
-import os, sys, base64, requests
+import os, sys, shutil, subprocess
 
-TOKEN_FILE = os.path.expanduser("~/.config/otpravit/token")
+HOME = os.path.expanduser("~")
+REPO_DIR = os.path.join(HOME, ".otprava")
+TOKEN_FILE = os.path.join(HOME, ".config/otpravit/token")
+
 if not os.path.exists(TOKEN_FILE):
     print("Токен не найден в ~/.config/otpravit/token")
     sys.exit(1)
-GITHUB_TOKEN = open(TOKEN_FILE).read().strip()
 
-REPO = "roflsphtshp/otpravka"
-BRANCH = "main"
-API_URL = f"https://api.github.com/repos/{REPO}/contents"
-HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+if not os.path.exists(REPO_DIR):
+    print("Локальная копия репозитория отсутствует. Пожалуйста, заново выполните install.sh")
+    sys.exit(1)
 
-def upload_file(filepath):
-    path = os.path.basename(filepath) if os.path.isfile(filepath) and os.path.dirname(filepath) == "" else os.path.relpath(filepath).replace("\\","/")
-    url = f"{API_URL}/{path}"
-    with open(filepath,"rb") as f:
-        content = base64.b64encode(f.read()).decode()
-    try:
-        r = requests.get(url, headers=HEADERS)
-        sha = r.json().get("sha") if r.status_code == 200 else None
-    except:
-        sha = None
-    payload = {"message": f"update {path}" if sha else f"create {path}",
-               "content": content,
-               "branch": BRANCH}
-    if sha:
-        payload["sha"] = sha
-    r2 = requests.put(url, json=payload, headers=HEADERS)
-    if r2.status_code in [200,201]:
-        print(f"[OK] {path} загружен")
-    else:
-        print(f"[ERROR] {path} не загружен: {r2.text}")
-
-def upload(filepath):
-    if os.path.isdir(filepath):
-        for root, _, files in os.walk(filepath):
-            for f in files:
-                upload_file(os.path.join(root, f))
-    else:
-        upload_file(filepath)
-
-def download_file(path):
-    url = f"{API_URL}/{path}"
-    r = requests.get(url, headers=HEADERS)
-    if r.status_code != 200: return
-    content = base64.b64decode(r.json()["content"])
-    if "/" in path: os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path,"wb") as f: f.write(content)
-    print(f"[OK] {path} скачан")
-
-def download_folder(folder_path):
-    url = f"{API_URL}/{folder_path}"
-    r = requests.get(url, headers=HEADERS)
-    if r.status_code != 200: return
-    data = r.json()
-    for item in data:
-        if item["type"]=="dir":
-            download_folder(item["path"])
-        else:
-            download_file(item["path"])
-
-def list_folder(path=""):
-    url = f"{API_URL}/{path}" if path else API_URL
-    r = requests.get(url, headers=HEADERS)
-    if r.status_code != 200:
-        print(f"[ERROR] {path} не найден на GitHub")
-        return
-    data = r.json()
-    if isinstance(data, dict):
-        print(data['name'])
-    else:
-        for item in data:
-            print(f"{item['type']:4}  {item['name']}")
+def git_cmd(args):
+    result = subprocess.run(args, cwd=REPO_DIR)
+    if result.returncode != 0:
+        print(f"Ошибка выполнения команды: {' '.join(args)}")
+        sys.exit(1)
 
 cmd = os.path.basename(sys.argv[0])
 if len(sys.argv) < 2:
@@ -99,19 +48,32 @@ if len(sys.argv) < 2:
 arg = sys.argv[1]
 
 if cmd == "otpravit":
-    upload(arg)
+    dest = os.path.join(REPO_DIR, arg)
+    if os.path.isdir(arg):
+        if os.path.exists(dest):
+            shutil.rmtree(dest)
+        shutil.copytree(arg, dest)
+    else:
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copy2(arg, dest)
+    git_cmd(["git", "add", "."])
+    git_cmd(["git", "commit", "-m", f"update {arg}"])
+    git_cmd(["git", "push", f"https://{open(TOKEN_FILE).read().strip()}@github.com/roflsphtshp/otpravka.git", "main"])
+    print(f"[OK] {arg} отправлен")
 elif cmd == "skachat":
-    r = requests.get(f"{API_URL}/{arg}", headers=HEADERS)
-    if r.status_code != 200:
-        print(f"[ERROR] {arg} не найден на GitHub")
-        sys.exit()
-    data = r.json()
-    if isinstance(data, list):
-        download_folder(arg)
-    elif isinstance(data, dict):
-        download_file(arg)
+    src = os.path.join(REPO_DIR, arg)
+    if os.path.isdir(src):
+        shutil.copytree(src, arg, dirs_exist_ok=True)
+    else:
+        shutil.copy2(src, arg)
+    print(f"[OK] {arg} скачан")
 elif cmd == "prosmotret":
-    list_folder(arg)
+    path = os.path.join(REPO_DIR, arg) if arg else REPO_DIR
+    for root, dirs, files in os.walk(path):
+        for d in dirs:
+            print(f"dir  {os.path.relpath(os.path.join(root,d), REPO_DIR)}")
+        for f in files:
+            print(f"file {os.path.relpath(os.path.join(root,f), REPO_DIR)}")
 EOF
 
 sudo chmod +x /usr/bin/otpravit
