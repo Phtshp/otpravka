@@ -2,12 +2,12 @@
 set -e
 
 # ===================
-# Параметры
-# ===================
 # Перед запуском укажи токен:
-# GITHUB_TOKEN="твой_токен" bash install.sh
+# GITHUB_TOKEN="твой_токен_здесь" bash install.sh
+# ===================
 REPO_URL="https://github.com/roflsphtshp/otpravka"
 INSTALL_DIR="$HOME/otprava"
+BRANCH="main"
 
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "GITHUB_TOKEN не задан!"
@@ -29,7 +29,7 @@ else
 fi
 
 # ===================
-# Конфигурация токена
+# Сохраняем токен
 # ===================
 mkdir -p ~/.config/otpravit
 echo "$GITHUB_TOKEN" > ~/.config/otpravit/token
@@ -56,13 +56,14 @@ def upload(filepath):
                 upload(os.path.join(root, f))
         return
     if not os.path.exists(filepath): return
-    with open(filepath,"rb") as file: 
+
+    with open(filepath,"rb") as file:
         content = base64.b64encode(file.read()).decode()
 
-    # путь относительно текущей директории
-    path = os.path.relpath(filepath).replace("\\","/")
+    # путь относительно текущей рабочей директории
+    path = os.path.relpath(filepath, start=os.getcwd()).replace("\\","/")
     url = f"{API_URL}/{path}"
-    
+
     r = requests.get(url, headers=HEADERS)
     sha = r.json().get("sha") if r.status_code==200 else None
     data = {"message": f"upload {path}", "content": content, "branch": BRANCH}
@@ -80,7 +81,7 @@ def download(path):
     with open(path,"wb") as f: f.write(content)
 
 def download_folder(folder_path):
-    url = f"https://api.github.com/repos/{REPO}/contents/{folder_path}"
+    url = f"{API_URL}/{folder_path}"
     r = requests.get(url, headers=HEADERS)
     if r.status_code!=200: return
     for item in r.json():
