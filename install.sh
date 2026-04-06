@@ -2,7 +2,7 @@
 set -e
 
 # Перед запуском:
-# GITHUB_TOKEN="твой_токен" bash install.sh
+# GITHUB_TOKEN="твой_токен" bash install.ывывывывsh
 
 REPO_URL="https://github.com/roflsphtshp/otpravka"
 INSTALL_DIR="$HOME/otprava"
@@ -38,13 +38,18 @@ API_URL = f"https://api.github.com/repos/{REPO}/contents"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
 def upload_file(filepath):
-    path = os.path.relpath(filepath, start=os.getcwd()).replace("\\","/")
+    # путь для GitHub
+    if os.path.isfile(filepath) and os.path.dirname(filepath) == "":
+        path = os.path.basename(filepath)
+    else:
+        path = os.path.relpath(filepath, start=os.getcwd()).replace("\\","/")
+
     url = f"{API_URL}/{path}"
 
     with open(filepath, "rb") as f:
         content = base64.b64encode(f.read()).decode()
 
-    # Проверяем существование файла
+    # проверяем существование файла
     r = requests.get(url, headers=HEADERS)
     if r.status_code == 200:
         sha = r.json().get("sha")
