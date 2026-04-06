@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Перед запуском:
+# Перед запуском:фывввввввввввввввв
 # GITHUB_TOKEN="твой_токен" bash install.ывывывывsh
 
 REPO_URL="https://github.com/roflsphtshp/otpravka"
