@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Установить Python и requests, если нет
+# Установить Python и requests, если не установлены
 sudo dnf install -y python3 python3-requests >/dev/null 2>&1
 
-# Создать директорию для токена и сохранить его
+# Сохраняем токен в конфиг
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "GITHUB_TOKEN не задан!"
     exit 1
@@ -14,8 +14,8 @@ mkdir -p ~/.config/otpravit
 echo "$GITHUB_TOKEN" > ~/.config/otpravit/token
 chmod 600 ~/.config/otpravit/token
 
-# Создаём скрипт otpravit
-sudo tee /usr/local/bin/otpravit >/dev/null <<'EOF'
+# Создаём скрипт otpravit в /usr/bin
+sudo tee /usr/bin/otpravit >/dev/null <<'EOF'
 #!/usr/bin/env python3
 import os, sys, base64, requests
 
@@ -114,6 +114,8 @@ elif cmd == "prosmotret":
     list_folder(arg)
 EOF
 
-sudo chmod +x /usr/local/bin/otpravit
-sudo ln -sf /usr/local/bin/otpravit /usr/local/bin/skachat
-sudo ln -sf /usr/local/bin/otpravit /usr/local/bin/prosmotret
+sudo chmod +x /usr/bin/otpravit
+sudo ln -sf /usr/bin/otpravit /usr/bin/skachat
+sudo ln -sf /usr/bin/otpravit /usr/bin/prosmotret
+
+echo "Установка завершена. Команды otpravit, skachat и prosmotret доступны."
