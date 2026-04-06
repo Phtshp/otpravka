@@ -1,22 +1,20 @@
 #!/bin/bash
 set -e
 
-# Перед запуском:
-# GITHUB_TOKEN="твой_токен" bash install.sh
+# Установить Python и requests, если нет
+sudo dnf install -y python3 python3-requests >/dev/null 2>&1
 
+# Создать директорию для токена и сохранить его
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "GITHUB_TOKEN не задан!"
     exit 1
 fi
 
-sudo dnf install -y python3 python3-requests >/dev/null 2>&1
-
-# Сохраняем токен в конфиг
 mkdir -p ~/.config/otpravit
 echo "$GITHUB_TOKEN" > ~/.config/otpravit/token
 chmod 600 ~/.config/otpravit/token
 
-# Создаём скрипт
+# Создаём скрипт otpravit
 sudo tee /usr/local/bin/otpravit >/dev/null <<'EOF'
 #!/usr/bin/env python3
 import os, sys, base64, requests
