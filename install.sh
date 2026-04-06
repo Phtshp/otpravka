@@ -38,7 +38,6 @@ API_URL = f"https://api.github.com/repos/{REPO}/contents"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
 def upload_file(filepath):
-    # путь для GitHub
     if os.path.isfile(filepath) and os.path.dirname(filepath) == "":
         path = os.path.basename(filepath)
     else:
@@ -48,12 +47,12 @@ def upload_file(filepath):
     with open(filepath, "rb") as f:
         content = base64.b64encode(f.read()).decode()
 
-    # проверяем существование файла, но не выходим при 404
-    r = requests.get(url, headers=HEADERS)
-    sha = None
-    if r.status_code == 200:
-        data = r.json()
-        sha = data.get("sha")
+    # GET только для получения sha, не выходим при 404
+    try:
+        r = requests.get(url, headers=HEADERS)
+        sha = r.json().get("sha") if r.status_code == 200 else None
+    except:
+        sha = None
 
     payload = {"message": f"update {path}" if sha else f"create {path}",
                "content": content,
@@ -62,8 +61,10 @@ def upload_file(filepath):
         payload["sha"] = sha
 
     r2 = requests.put(url, json=payload, headers=HEADERS)
-    if r2.status_code not in [200,201]:
-        print("Ошибка при загрузке:", r2.text)
+    if r2.status_code in [200,201]:
+        print(f"[OK] {path} загружен")
+    else:
+        print(f"[ERROR] {path} не загружен: {r2.text}")
 
 def upload(filepath):
     if os.path.isdir(filepath):
@@ -80,6 +81,7 @@ def download_file(path):
     content = base64.b64decode(r.json()["content"])
     if "/" in path: os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path,"wb") as f: f.write(content)
+    print(f"[OK] {path} скачан")
 
 def download_folder(folder_path):
     url = f"{API_URL}/{folder_path}"
@@ -93,15 +95,16 @@ def download_folder(folder_path):
             download_file(item["path"])
 
 cmd = os.path.basename(sys.argv[0])
-if len(sys.argv) < 2: sys.exit()
+if len(sys.argv) < 2: sys.exit("Не указан файл или папка")
 arg = sys.argv[1]
 
 if cmd == "otpravit":
     upload(arg)
 elif cmd == "skachat":
-    # проверяем, папка или файл
     r = requests.get(f"{API_URL}/{arg}", headers=HEADERS)
-    if r.status_code != 200: sys.exit()
+    if r.status_code != 200:
+        print(f"[ERROR] {arg} не найден на GitHub")
+        sys.exit()
     data = r.json()
     if isinstance(data, list):
         download_folder(arg)
